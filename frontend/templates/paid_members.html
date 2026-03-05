@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="container-fluid">
+  <div class="card mt-3">
+    <div class="card-body">
+  
+      <div class="d-flex justify-content-between align-items-center">
+  
+        <!-- Left -->
+        <div>
+          <h5 class="mb-0">Paid Members</h5>
+          <div class="text-muted small">
+            Members who paid in the selected month.
+          </div>
+        </div>
+  
+        <!-- Right -->
+        {% if request.user.role == "ADMIN" %}
+        <div>
+          <div class="text-muted small">Total Collection</div>
+          <div class="text-success fs-4 fw-bold">
+            ₹ {{ total_collection }}
+          </div>
+        </div>
+        {% endif %}
+        
+  
+      </div>
+      
+    </div>
+  </div>
+  
+</div>
+  <div class="container-fluid">
+
+  
+    <!-- Filters -->
+    <form method="get">
+      <div class="card shadow-sm border-0 mb-3 mt-2">
+        <div class="card-body">
+          <div class="row g-2">
+  
+            <div class="col-12 col-md-3">
+              <input class="form-control" name="q" value="{{ q }}" placeholder="Search name or phone">
+            </div>
+  
+            <div class="col-6 col-md-2">
+              <select class="form-select" name="month">
+                {% for m in "123456789101112"|make_list %}
+                {% endfor %}
+                {% for m in months %}
+                {% endfor %}
+                <!-- Simple month options -->
+                <option value="1"  {% if month == 1 %}selected{% endif %}>Jan</option>
+                <option value="2"  {% if month == 2 %}selected{% endif %}>Feb</option>
+                <option value="3"  {% if month == 3 %}selected{% endif %}>Mar</option>
+                <option value="4"  {% if month == 4 %}selected{% endif %}>Apr</option>
+                <option value="5"  {% if month == 5 %}selected{% endif %}>May</option>
+                <option value="6"  {% if month == 6 %}selected{% endif %}>Jun</option>
+                <option value="7"  {% if month == 7 %}selected{% endif %}>Jul</option>
+                <option value="8"  {% if month == 8 %}selected{% endif %}>Aug</option>
+                <option value="9"  {% if month == 9 %}selected{% endif %}>Sep</option>
+                <option value="10" {% if month == 10 %}selected{% endif %}>Oct</option>
+                <option value="11" {% if month == 11 %}selected{% endif %}>Nov</option>
+                <option value="12" {% if month == 12 %}selected{% endif %}>Dec</option>
+              </select>
+            </div>
+  
+            <div class="col-6 col-md-2">
+              <input type="number" class="form-control" name="year" value="{{ year }}" min="2020" max="2100">
+            </div>
+  
+            <div class="col-12 col-md-3">
+              <select class="form-select" name="branch">
+                <option value="">All Branches</option>
+                {% for b in branches %}
+                  <option value="{{ b.id }}" {% if branch_id == b.id|stringformat:"s" %}selected{% endif %}>
+                    {{ b.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+  
+            <div class="col-12 col-md-2 d-flex justify-content-end gap-2">
+              <button class="btn btn-primary" type="submit">Filter</button>
+              <a class="btn btn-outline-secondary" href="{% url 'paid_members_page' %}">Reset</a>
+            </div>
+  
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="container-fluid">
+    <!-- Table -->
+    <div class="card shadow-sm border-0 rounded-3">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th class="fw-semibold text-muted" >#</th>
+                <th class="fw-semibold text-muted" >Name</th>
+                <th class="fw-semibold text-muted" >Phone</th>
+                <th class="fw-semibold text-muted" >Branch</th>
+                <th class="fw-semibold text-muted" >Total Paid</th>
+                <th class="fw-semibold text-muted" >Last Payment</th>
+                <th class="fw-semibold text-muted" >Action</th>
+              </tr>
+            </thead>
+  
+            <tbody>
+              {% for r in paid_members %}
+              <tr>
+                  <td class="py-3">{{ forloop.counter }}</td>
+              
+                  <!-- Name + Photo -->
+                  <td class="py-3">
+                      <div class="d-flex align-items-center gap-2">
+              
+                          {% if r.photo %}
+                              <img src="{{ r.photo.url }}"
+                                   alt="{{ r.name }}"
+                                   width="42"
+                                   height="42"
+                                   class="rounded-circle border"
+                                   style="object-fit: cover;">
+                          {% else %}
+                              <!-- Fallback avatar -->
+                              <div class="rounded-circle border d-flex align-items-center justify-content-center"
+                                   style="width:42px;height:42px;background:#f1f3f5;font-weight:600;">
+                                  {{ r.name|slice:":1"|upper }}
+                              </div>
+                          {% endif %}
+              
+                          <div class="fw-semibold">{{ r.name }}</div>
+                      </div>
+                  </td>
+              
+                  <td class="py-3">{{ r.phone }}</td>
+                  <td class="py-3">{{ r.branch.name }}</td>
+                  <td class="py-3 fw-semibold">₹{{ r.total_paid|default:0 }}</td>
+                  <td class="py-3">
+                      {{ r.last_payment|date:"Y-m-d" }}
+                  </td>
+              
+                  <td class="py-3">
+                      <button type="button"
+                              class="btn btn-outline-secondary btn-sm"
+                              onclick="openMemberDetails('{{ r.id }}')">
+                          <i class="bi bi-eye"></i>
+                      </button>
+                  </td>
+              </tr>
+              {% empty %}
+              <tr>
+                  <td colspan="7" class="text-center py-4">
+                      No paid members found for this month
+                  </td>
+              </tr>
+              {% endfor %}
+              </tbody>
+  
+          </table>
+        </div>
+      </div>
+    </div>
+  
+  </div>
+</div>
+
+<!-- Plan Renewal Modal -->
+<div class="modal fade" id="renewPlanModal" tabindex="-1">
+  <div class="modal-dialog">
+      <div class="modal-content">
+
+          <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title">Renew Membership</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+
+          <form id="renewPlanForm">
+              <div class="modal-body">
+
+                  <!-- hidden -->
+                  <input type="hidden" id="renew_member_id" name="member_id">
+                  <input type="hidden" id="renew_branch_id" name="branch_id">
+
+                  <!-- Member -->
+                  <div class="mb-2">
+                      <label class="form-label">Member Name</label>
+                      <input type="text" id="renew_member_name" class="form-control" readonly>
+                  </div>
+
+                  <!-- Branch -->
+                  <div class="mb-2">
+                      <label class="form-label">Branch</label>
+                      <input type="text" id="renew_branch_name" class="form-control" readonly>
+                  </div>
+
+                  <!-- Current Expiry -->
+                  <div class="mb-2">
+                      <label class="form-label">Current Expiry</label>
+                      <input type="text" id="renew_current_expiry" class="form-control" readonly>
+                  </div>
+                  <div class="mb-2">
+                      <label class="form-label">Plane Start</label>
+                      <input type="date" id="renew_Plane_current_expiry" name="renew_Plane_current_expiry"
+                          class="form-control">
+                  </div>
+                  <hr>
+
+                  <!-- Select Plan -->
+                  <div class="mb-2">
+                      <label class="form-label">Select Plan</label>
+                      <select id="renew_plan" name="plan_id" class="form-select" required>
+                          <option value="">Choose plan</option>
+                      </select>
+                  </div>
+
+                  <!-- Amount -->
+                  <div class="mb-2">
+                      <label class="form-label">Amount</label>
+                      <input type="number" id="renew_amount" name="amount" class="form-control" required readonly>
+                  </div>
+
+                  <!-- Payment Mode -->
+                  <div class="mb-2">
+                      <label class="form-label">Payment Mode</label>
+                      <select name="payment_mode" class="form-select" required>
+                          <option value="cash">Cash</option>
+                          <option value="upi">UPI</option>
+                      </select>
+                  </div>
+
+                  <!-- New validity preview -->
+                  <div class="alert alert-info mb-0">
+                      New Expiry: <b id="renew_new_expiry">-</b>
+                  </div>
+
+              </div>
+
+              <div class="modal-footer">
+                  <button type="submit" class="btn btn-success">Confirm Renewal</button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              </div>
+          </form>
+
+      </div>
+  </div>
+</div>
+
+
+
+<!-- Member Details Modal -->
+<div class="modal fade" id="memberDetailsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+          <div class="modal-header">
+              <h5 class="modal-title">Member Details</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body">
+              <!-- Member Summary -->
+              <div class="row g-3 shadow-sm">
+                  <div class="col-md-6 ">
+                      <div class="border rounded p-3">
+                          <div><b>Name:</b> <span id="md_name">-</span></div>
+                          <div><b>Phone:</b> <span id="md_phone">-</span></div>
+                          <div><b>Status:</b> <span id="md_status" class="badge rounded-pill bg-success">-</span></div>
+                          <div><b>Join Date:</b> <span id="md_join_date">-</span></div>
+                      </div>
+                  </div>
+
+                  <div class="col-md-6 ">
+                      <div class="border rounded p-3">
+                          <div><b>Gym:</b> <span id="md_gym">-</span></div>
+                          <div><b>Branch:</b> <span id="md_branch">-</span></div>
+                          <div><b>Plan:</b> <span id="md_plan">-</span></div>
+                          <div><b>Plan Valid:</b> <span id="md_validity">-</span></div>
+                      </div>
+                  </div>
+              </div>
+
+              <hr>
+
+              <!-- Payment Summary -->
+              <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <h6 class="mb-0">Payment History</h6>
+                <div class="text-end">
+                  <span class="me-3"><b>Total Paid:</b> ₹<span id="md_total_paid">0</span></span>
+                  <span class="me-3"><b>Total Discount:</b> ₹<span id="md_total_discount">0</span></span>
+                  <span class="me-3"><b>Total Final:</b> ₹<span id="md_total_final">0</span></span>
+                  <span><b>Last Payment:</b> <span id="md_last_payment">-</span></span>
+                </div>
+              </div>
+
+              <!-- Payment Table -->
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                  <thead>
+                    <tr>
+                      <th style="width:50px;">#</th>
+                      <th>Invoice</th>
+                      <th>Payment Date</th>
+                      <th>Plan</th>
+                      <th>Plan Price</th>
+                      <th>Discount</th>
+                      <th>Final</th>
+                      <th>Paid</th>
+                      <th>Mode</th>
+                      <th>Reason</th>
+                      <th>Given By</th>
+                      <th>Coverage Start</th>
+                      <th>Coverage End</th>
+                    </tr>
+                  </thead>
+                  <tbody id="md_payments_tbody">
+                    <tr>
+                      <td colspan="13" class="text-center">No payments</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+          </div>
+
+          <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+
+      </div>
+  </div>
+</div>
+
+
+
+  <script>
+
+    function safeText(v) {
+      return (v === null || v === undefined || v === "") ? "-" : v;
+  }
+
+
+ 
+// ---------- member details ----------
+function setStatusBadge(label) {
+  const $el = $("#md_status");
+  $el.text(safeText(label));
+
+  // reset classes
+  $el.removeClass("bg-success bg-danger bg-warning text-dark");
+
+  const l = String(label || "").toLowerCase();
+  if (l.includes("active")) $el.addClass("bg-success");
+  else if (l.includes("expired")) $el.addClass("bg-danger");
+  else if (l.includes("expir")) $el.addClass("bg-warning text-dark");
+  else $el.addClass("bg-secondary");
+}
+
+function openMemberDetails(memberId) {
+  $.ajax({
+    url: `/members/${memberId}/full-details/`,
+    type: "GET",
+    dataType: "json",
+    success: function (data) {
+      // Member
+      $("#md_name").text(safeText(data.member.name));
+      $("#md_phone").text(safeText(data.member.phone));
+      setStatusBadge(data.member.status_label);
+      $("#md_join_date").text(safeText(data.member.join_date));
+
+      $("#md_gym").text(safeText(data.member.gym_name));
+      $("#md_branch").text(safeText(data.member.branch_name));
+
+      $("#md_plan").text(
+        data.member.plan_name
+          ? `${data.member.plan_name} (₹${safeText(data.member.plan_price)})`
+          : "-"
+      );
+
+      $("#md_validity").text(
+        `${safeText(data.member.start_date)} → ${safeText(data.member.expiry_date)}`
+      );
+
+      // Summary
+      $("#md_total_paid").text(safeText(data.summary.total_paid));
+      $("#md_total_discount").text(safeText(data.summary.total_discount));     // ✅ NEW
+      $("#md_total_final").text(safeText(data.summary.total_final_amount));    // ✅ NEW
+      $("#md_last_payment").text(safeText(data.summary.last_payment_date));
+
+      // Payments table
+      const $tbody = $("#md_payments_tbody");
+      $tbody.empty();
+
+      if (!data.payments || data.payments.length === 0) {
+        $tbody.html(`<tr><td colspan="13" class="text-center text-muted">No payments</td></tr>`);
+      } else {
+        $.each(data.payments, function (idx, p) {
+          const givenBy = p.created_by_name
+            ? `${p.created_by_name}${p.created_by_role ? ` (${p.created_by_role})` : ""}`
+            : "-";
+
+          $tbody.append(`
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${safeText(p.invoice_no)}</td>
+              <td>${safeText(p.payment_date)}</td>
+              <td>${safeText(p.plan_name)}</td>
+              <td>₹${safeText(p.plan_price)}</td>
+              <td class="text-danger fw-semibold">₹${safeText(p.discount_amount)}</td>
+              <td class="fw-semibold">₹${safeText(p.final_amount)}</td>
+              <td class="text-success fw-semibold">₹${safeText(p.amount)}</td>
+              <td>${safeText(p.payment_mode_label)}</td>
+              <td>${safeText(p.discount_reason)}</td>
+              <td>${givenBy}</td>
+              <td>${safeText(p.coverage_start)}</td>
+              <td>${safeText(p.coverage_end)}</td>
+            </tr>
+          `);
+        });
+      }
+
+      // Show modal (Bootstrap 5)
+      const modalEl = document.getElementById("memberDetailsModal");
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    },
+    error: function (xhr, status, err) {
+      console.error("Error loading member details:", err);
+      alert(xhr.responseJSON?.error || "Failed to load member details");
+    }
+  });
+}
+
+
+
+  </script>
+
+{% endblock %}

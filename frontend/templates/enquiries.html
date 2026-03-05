@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container-fluid mt-3">
+
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      
+          <div>
+            <h5 class="mb-1 fw-semibold">Enquiries</h5>
+            <small class="text-muted">
+              Add enquiry, track follow-ups, close deals.
+            </small>
+          </div>
+      
+          <button class="btn btn-primary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#addEnquiryModal">
+            <i class="bi bi-plus-circle me-1"></i>
+            Add Enquiry
+          </button>
+      
+        </div>
+      </div>
+
+  <!-- Filters -->
+  <form method="get" class="card shadow-sm border-0 mb-3">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+
+        <div class="col-12 col-md-4">
+          <label class="form-label small text-muted">Search (Name / Phone)</label>
+          <input type="text" name="q" class="form-control" value="{{ filters.q }}" placeholder="Search...">
+        </div>
+
+        <div class="col-12 col-md-2">
+          <label class="form-label small text-muted">Branch</label>
+          <select name="branch" class="form-select">
+            <option value="">All Branches</option>
+            {% for b in branches %}
+              <option value="{{ b.id }}" {% if filters.branch == b.id|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-2">
+          <label class="form-label small text-muted">Status</label>
+          <select name="status" class="form-select">
+            <option value="">All</option>
+            {% for k,v in status_choices %}
+              <option value="{{ k }}" {% if filters.status == k %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-2">
+          <label class="form-label small text-muted">Follow-up</label>
+          <select name="followup" class="form-select">
+            <option value="">All</option>
+            <option value="today" {% if filters.followup == "today" %}selected{% endif %}>Today</option>
+            <option value="overdue" {% if filters.followup == "overdue" %}selected{% endif %}>Overdue</option>
+            <option value="upcoming" {% if filters.followup == "upcoming" %}selected{% endif %}>Upcoming</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-md-2 d-flex gap-2">
+          <button class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i>Apply</button>
+          <a class="btn btn-light border w-100" href="{% url 'enquiry_page' %}">Reset</a>
+        </div>
+
+      </div>
+    </div>
+  </form>
+
+  <!-- Table -->
+  <div class="card shadow-sm border-0">
+    <div class="card-body table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Lead</th>
+            <th>Branch</th>
+            <th>Interested</th>
+            <th>Status</th>
+            <th>Next Follow-up</th>
+            <th>Last Note</th>
+            <th>Created By</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+
+            <td>
+              <div class="fw-semibold">{{ r.name }}</div>
+              <div class="text-muted small">{{ r.phone }}</div>
+              {% if r.source %}<div class="small">Source: <span class="text-muted">{{ r.source }}</span></div>{% endif %}
+            </td>
+
+            <td>{{ r.branch.name|default:"-" }}</td>
+            <td>{{ r.interested_plan|default:"-" }}</td>
+
+            <td>
+              {% if r.status == "open" %}
+                <span class="badge bg-secondary">Open</span>
+              {% elif r.status == "followup" %}
+                <span class="badge bg-warning text-dark">Follow-up</span>
+              {% elif r.status == "won" %}
+                <span class="badge bg-success">Closed - Won</span>
+              {% else %}
+                <span class="badge bg-danger">Closed - Lost</span>
+              {% endif %}
+            </td>
+
+            <td class="fw-semibold">{{ r.next_followup|date:"Y-m-d"|default:"-" }}</td>
+            <td class="text-muted small">{{ r.last_followup_note|default:"-" }}</td>
+
+            <td class="small">
+              {% if r.created_by %}
+                {{ r.created_by.first_name|default:r.created_by.username }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+
+            <td class="text-center py-2">
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+              
+                  <!-- Edit -->
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary btn-enq-edit"
+                    data-id="{{ r.id }}"
+                    data-status="{{ r.status }}"
+                    data-followup="{{ r.next_followup|date:'Y-m-d' }}"
+                    data-note="{{ r.last_followup_note|default_if_none:''|escapejs }}"
+                    title="Edit / Update Follow-up"
+                  >
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+              
+                  <!-- WhatsApp -->
+                  <a class="btn btn-success btn-sm"
+                     target="_blank"
+                     href="https://wa.me/91{{ r.phone }}?text=Hello%20{{ r.name|urlencode }}%20%F0%9F%91%8B%0A%0AThis%20is%20a%20friendly%20follow-up%20from%20{{ request.user.gym.name|urlencode }}.%0ARegarding%20your%20gym%20enquiry.%0A%0ANext%20follow-up%3A%20{{ r.next_followup|date:'Y-m-d' }}%0A%0AReply%20anytime%20%F0%9F%92%AA"
+                     title="WhatsApp"
+                  >
+                    <i class="bi bi-whatsapp"></i>
+                  </a>
+              
+                  <!-- Call -->
+                  <a class="btn btn-primary btn-sm"
+                     target="_blank"
+                     href="tel:+91{{ r.phone }}"
+                     title="Call"
+                  >
+                    <i class="bi bi-telephone-fill"></i>
+                  </a>
+              
+                  <!-- Convert to Member -->
+                  <a class="btn btn-sm btn-warning"
+                     href="{% url 'Add_members' %}?phone={{ r.phone }}&name={{ r.name|urlencode }}"
+                     title="Convert to Member"
+                  >
+                    <i class="bi bi-person-plus"></i>
+                  </a>
+              
+                </div>
+              </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No enquiries found</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- Add Enquiry Modal -->
+<div class="modal fade" id="addEnquiryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Enquiry</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Name *</label>
+              <input type="text" name="name" class="form-control" required>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Phone *</label>
+              <input type="text" name="phone" class="form-control" required>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Branch</label>
+              <select name="branch" class="form-select">
+                <option value="">-</option>
+                {% for b in branches %}
+                  <option value="{{ b.id }}">{{ b.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Source</label>
+              <input type="text" name="source" class="form-control" placeholder="Walk-in / Instagram / Referral">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Interested Plan</label>
+              <input type="text" name="interested_plan" class="form-control" placeholder="6 Month / 12 Month...">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Next Follow-up</label>
+              <input type="date" name="next_followup" class="form-control">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Note</label>
+              <textarea name="note" class="form-control" rows="3" placeholder="Any notes..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-light border" data-bs-dismiss="modal" type="button">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- Update Enquiry Modal -->
+<div class="modal fade" id="updateEnquiryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Update Enquiry</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div id="enq_err" class="alert alert-danger d-none"></div>
+
+        <input type="hidden" id="enq_id">
+
+        <div class="mb-2">
+          <label class="form-label">Status</label>
+          <select id="enq_status" class="form-select">
+            {% for k,v in status_choices %}
+              <option value="{{ k }}">{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Next Follow-up</label>
+          <input type="date" id="enq_next_followup" class="form-control">
+          <small class="text-muted">If status is Closed, follow-up will be cleared automatically.</small>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Follow-up Note</label>
+          <input type="text" id="enq_note" class="form-control" placeholder="Called / Visit planned / etc">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-light border" data-bs-dismiss="modal" type="button">Cancel</button>
+        <button class="btn btn-primary" id="btnEnqSave" type="button">Save</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+
+$(document).on("click", ".btn-enq-edit", function () {
+        const id = $(this).data("id");
+        const status = $(this).data("status") || "open";
+        const followup = $(this).data("followup") || "";
+        const note = $(this).data("note") || "";
+    
+        openUpdateEnquiry(id, status, followup, note);
+})
+    
+function openUpdateEnquiry(id, status, nextFollowup, note) {
+  $("#enq_id").val(id);
+  $("#enq_status").val(status || "open");
+  $("#enq_next_followup").val(nextFollowup || "");
+  $("#enq_note").val(note || "");
+  $("#enq_err").addClass("d-none").text("");
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("updateEnquiryModal")).show();
+}
+
+$("#btnEnqSave").on("click", function () {
+  const id = $("#enq_id").val();
+  const status = $("#enq_status").val();
+  const next_followup = $("#enq_next_followup").val();
+  const last_followup_note = $("#enq_note").val();
+
+  $.ajax({
+    url: `/enquiries/${id}/update/`,
+    type: "POST",
+    data: {
+      status,
+      next_followup,
+      last_followup_note,
+      csrfmiddlewaretoken: $("input[name=csrfmiddlewaretoken]").val(),
+    },
+    success: function(res){
+      if(res.success){
+        location.reload();
+      }else{
+        $("#enq_err").removeClass("d-none").text(res.error || "Failed");
+      }
+    },
+    error: function(xhr){
+      $("#enq_err").removeClass("d-none").text(xhr.responseJSON?.error || "Failed");
+    }
+  });
+});
+</script>
+
+{% endblock %}

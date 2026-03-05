@@ -1,0 +1,775 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+<div class="card shadow-sm border-0 mb-3 py-2 px-2">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Renewals
+    <span style="font-size: 14px;">
+        <p class="text-muted small mb-0">(Today’s renewals are tomorrow’s revenue)</p>
+    </span>
+    </h3>
+  
+    <button class="btn btn-outline-success btn-sm" id="exportCsv">
+      <i class="bi bi-download me-1"></i> Export
+  </button>
+  </div>
+</div>
+  <!-- Filters -->
+  <form method="get">
+    <div class="card shadow-sm border-0 mb-3 pt-3">
+      <div class="card-body">
+        <div class="row g-2">
+
+          <!-- Search -->
+          <div class="col-12 col-md-4">
+            <input type="text"
+                   name="q"
+                   value="{{ q }}"
+                   class="form-control"
+                   placeholder="Search name or phone">
+          </div>
+
+          <!-- Branch -->
+          <div class="col-12 col-md-4">
+            <select name="branch" class="form-select">
+              <option value="">All Branches</option>
+              {% for b in branches %}
+                <option value="{{ b.id }}"
+                  {% if branch_id == b.id|stringformat:"s" %}selected{% endif %}>
+                  {{ b.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Status -->
+          <div class="col-12 col-md-4">
+            <select name="status" class="form-select">
+              <option value="all" {% if status == "all" %}selected{% endif %} selected>All Status</option>
+              <option value="active" {% if status == "active" %}selected{% endif %}>Active</option>
+              <option value="expiring" {% if status == "expiring" %}selected{% endif %}>Expiring Soon</option>
+              <option value="expired" {% if status == "expired" %}selected{% endif %}>Expired</option>
+            </select>
+          </div>
+
+          <!-- Buttons -->
+          <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a class="btn btn-outline-secondary" href="{% url 'renewals_page' %}">Reset</a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- Table -->
+  <div class="card shadow-sm border-0 rounded-3 pt-3 pb-3">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover table-hover align-middle" id="renewalsTable">
+          <thead>
+            <tr>
+              <th class="fw-semibold text-muted">#</th>
+              <th class="fw-semibold text-muted">Name</th>
+              <th class="fw-semibold text-muted">Phone</th>
+              <th class="fw-semibold text-muted">Branch</th>
+              <th class="fw-semibold text-muted">Plan</th>
+              <th class="fw-semibold text-muted">Expiry</th>
+              <th class="fw-semibold text-muted">Days Left</th>
+              <th class="fw-semibold text-muted">Status</th>
+              <th class="fw-semibold text-muted">Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for m in members %}
+            {% with days_left=m.expiry_date|timeuntil:today %}
+            <tr>
+              <td class="py-4 ">{{ forloop.counter }}</td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  {% if m.photo %}
+                  <img src="{{ m.photo.url }}" alt="{{ m.name }}" width="42" height="42"
+                      class="rounded-circle border" style="object-fit: cover;">
+                  {% else %}
+                  <!-- fallback avatar -->
+                  <div class="rounded-circle border d-flex align-items-center justify-content-center"
+                      style="width:38px;height:38px;background:#f1f3f5;font-weight:600;">
+                      {{ m.name|slice:":1"|upper }}
+                  </div>
+                  {% endif %}
+
+                  <div class="fw-semibold">{{ m.name }}</div>
+              </div>
+              </td>
+              <td class="py-4 ">{{ m.phone }}</td>
+              <td class="py-4 ">{{ m.branch.name }}</td>
+              <td class="py-4 ">{% if m.plan %}{{ m.plan.name }}{% else %}-{% endif %}</td>
+              <td class="py-4 ">{{ m.expiry_date }}</td>
+
+              <!-- Days Left -->
+              <td class="py-4 ">
+                {% if m.expiry_date < today %}
+                  <span class="text-danger fw-bold">
+                    Expired
+                  </span>
+                {% else %}
+                  {{ m.expiry_date|timeuntil:today }}
+                {% endif %}
+              </td>
+
+              <!-- Status -->
+              <td class="py-4 ">
+                {% if m.expiry_date < today %}
+                  <span class="badge bg-danger">Expired</span>
+
+                {% elif m.expiry_date <= expiring_limit %}
+                  <span class="badge bg-warning text-dark">Expiring Soon</span>
+
+                {% else %}
+                  <span class="badge bg-success">Active</span>
+                {% endif %}
+              </td>
+
+              <!-- Actions -->
+              <td class="d-flex gap-2 py-4">
+
+                <!-- View -->
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="openMemberDetails('{{ m.id }}')">
+                        <i class="bi bi-eye"></i>
+                </button>
+
+                <!-- WhatsApp -->
+                <a class="btn btn-success btn-sm"
+                   target="_blank"
+                   href="https://wa.me/91{{ m.phone }}?text=Hello%20{{ m.name }}%20👋,%20your%20gym%20membership%20will%20expire%20on%20{{ m.expiry_date }}.%20Please%20renew%20to%20continue%20your%20training%20💪">
+                   <i class="bi bi-whatsapp"></i>
+                </a>
+
+                <!-- Renew -->
+                <button type="button" class="btn btn-primary btn-sm"
+                        onclick="openRenewModal('{{ m.id }}')">
+                        <i class="bi bi-arrow-repeat"></i>
+                </button>
+
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr>
+              <td colspan="9" class="text-center">No renewals found</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Plan Renewal Modal -->
+<div class="modal fade" id="renewPlanModal" tabindex="-1">
+  <div class="modal-dialog">
+      <div class="modal-content">
+
+          <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title">Renew Membership</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+
+          <form id="renewPlanForm">
+              <div class="modal-body">
+
+                  <!-- hidden -->
+                  <input type="hidden" id="renew_member_id" name="member_id">
+                  <input type="hidden" id="renew_branch_id" name="branch_id">
+
+                  <!-- Member -->
+                  <div class="mb-2">
+                      <label class="form-label">Member Name</label>
+                      <input type="text" id="renew_member_name" class="form-control" readonly>
+                  </div>
+
+                  <!-- Branch -->
+                  <div class="mb-2">
+                      <label class="form-label">Branch</label>
+                      <input type="text" id="renew_branch_name" class="form-control" readonly>
+                  </div>
+
+                  <!-- Current Expiry -->
+                  <div class="mb-2">
+                      <label class="form-label">Current Expiry</label>
+                      <input type="text" id="renew_current_expiry" class="form-control" readonly>
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Plane Start</label>
+                    <input type="date" id="renew_Plane_current_expiry"  name="renew_Plane_current_expiry" class="form-control">
+                </div>
+
+                  <hr>
+
+                  <!-- Select Plan -->
+                  <div class="mb-2">
+                      <label class="form-label">Select Plan</label>
+                      <select id="renew_plan" name="plan_id" class="form-select" required>
+                          <option value="">Choose plan</option>
+                      </select>
+                  </div>
+
+                  <!-- Amount -->
+                  <div class="mb-2">
+                      <label class="form-label">Amount</label>
+                      <input type="number" id="renew_amount" name="amount" class="form-control" required readonly >
+                  </div>
+                   <!-- ✅ Discount -->
+                   <div class="mb-2">
+                    <label class="form-label small fw-semibold text-muted">
+                        Discount Amount (₹)
+                    </label>
+                    <input type="number" name="discount_amount" class="form-control" id="discount_amount"
+                        min="0" step="0.01" placeholder="0.00">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold text-muted">
+                        Discount Reason
+                    </label>
+                    <input type="text" name="discount_reason" class="form-control" id="discount_reason"
+                        placeholder="Festival offer / Student / etc">
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold text-muted">
+                        Referral Name
+                    </label>
+                    <input type="text" name="referral_name" class="form-control" id="referral_name"
+                        placeholder="Who referred this member?">
+                </div>
+
+
+
+                  <div class="mb-2">
+                    <label class="form-label small fw-semibold text-muted">
+                      Paid Now (₹) <span class="text-danger">*</span>
+                    </label>
+                    <input type="number" name="paid_amount" class="form-control"
+                           min="0" step="0.01" placeholder="Enter paid amount" required>
+                  </div>
+
+                  <!-- Payment Mode -->
+                  <div class="mb-2">
+                      <label class="form-label">Payment Mode</label>
+                      <select name="payment_mode" class="form-select" required>
+                          <option value="cash">Cash</option>
+                          <option value="upi">UPI</option>
+                      </select>
+                  </div>
+
+                  <!-- New validity preview -->
+                  <div class="alert alert-info mb-0">
+                      New Expiry: <b id="renew_new_expiry">-</b>
+                  </div>
+
+              </div>
+
+              <div class="modal-footer">
+                  <button type="submit" class="btn btn-success">Confirm Renewal</button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              </div>
+          </form>
+
+      </div>
+  </div>
+</div>
+
+<!-- Member Details Modal -->
+<div class="modal fade" id="memberDetailsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+          <div class="modal-header">
+              <h5 class="modal-title">Member Details</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body">
+              <!-- Member Summary -->
+              <div class="row g-3 shadow-sm">
+                  <div class="col-md-6 ">
+                      <div class="border rounded p-3">
+                          <div><b>Name:</b> <span id="md_name">-</span></div>
+                          <div><b>Phone:</b> <span id="md_phone">-</span></div>
+                          <div><b>Status:</b> <span id="md_status" class="badge rounded-pill bg-success">-</span></div>
+                          <div><b>Join Date:</b> <span id="md_join_date">-</span></div>
+                      </div>
+                  </div>
+
+                  <div class="col-md-6 ">
+                      <div class="border rounded p-3">
+                          <div><b>Gym:</b> <span id="md_gym">-</span></div>
+                          <div><b>Branch:</b> <span id="md_branch">-</span></div>
+                          <div><b>Plan:</b> <span id="md_plan">-</span></div>
+                          <div><b>Plan Valid:</b> <span id="md_validity">-</span></div>
+                      </div>
+                  </div>
+              </div>
+
+              <hr>
+
+              <!-- Payment Summary -->
+              <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <h6 class="mb-0">Payment History</h6>
+                <div class="text-end">
+                  <span class="me-3"><b>Total Paid:</b> ₹<span id="md_total_paid">0</span></span>
+                  <span class="me-3"><b>Total Discount:</b> ₹<span id="md_total_discount">0</span></span>
+                  <span class="me-3"><b>Total Final:</b> ₹<span id="md_total_final">0</span></span>
+                  <span><b>Last Payment:</b> <span id="md_last_payment">-</span></span>
+                </div>
+              </div>
+
+              <!-- Payment Table -->
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                  <thead>
+                    <tr>
+                      <th style="width:50px;">#</th>
+                      <th>Invoice</th>
+                      <th>Payment Date</th>
+                      <th>Plan</th>
+                      <th>Plan Price</th>
+                      <th>Discount</th>
+                      <th>Final</th>
+                      <th>Paid</th>
+                      <th>Mode</th>
+                      <th>Reason</th>
+                      <th>Given By</th>
+                      <th>Coverage Start</th>
+                      <th>Coverage End</th>
+                    </tr>
+                  </thead>
+                  <tbody id="md_payments_tbody">
+                    <tr>
+                      <td colspan="13" class="text-center">No payments</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+          </div>
+
+          <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+
+      </div>
+  </div>
+</div>
+
+<!-- WhatsApp Receipt Modal -->
+<div class="modal fade" id="sendReceiptModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Receipt Ready ✅</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-body">
+          Receipt is ready ✅<br>
+          Click below to open WhatsApp and send it.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <a id="sr_whatsapp_btn" class="btn btn-success" target="_blank">
+          <i class="bi bi-whatsapp"></i> Send via WhatsApp
+        </a>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          Later
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+
+  function safeText(v) {
+    return (v === null || v === undefined || v === "") ? "-" : v;
+}
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+$.ajaxSetup({
+    headers: { "X-CSRFToken": getCookie("csrftoken") }
+});
+
+
+// YYYY-MM-DD -> Date (local)
+function parseISODate(s) {
+    if (!s) return null;
+    const d = new Date(s + "T00:00:00");
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function toISODate(d) {
+    return d.toISOString().split("T")[0];
+}
+
+// ---------- Renewal Modal Open ----------
+function openRenewModal(memberId) {
+    // reset form
+    $("#renewPlanForm")[0].reset();
+    $("#renew_plan").html('<option value="">Choose plan</option>');
+    $("#renew_new_expiry").text("-");
+
+    $.get(`/members/${memberId}/full-details/`)
+        .done(function (data) {
+            $("#renew_member_id").val(data.member.id);
+            $("#renew_member_name").val(safeText(data.member.name));
+            $("#renew_branch_id").val(data.member.branch_id);
+            $("#renew_branch_name").val(safeText(data.member.branch_name));
+            $("#renew_current_expiry").val(safeText(data.member.expiry_date));
+
+            // load plans for this branch
+            loadPlans(data.member.branch_id);
+
+            // show modal
+            const modalEl = document.getElementById("renewPlanModal");
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        })
+        .fail(function (xhr) {
+            console.error("Failed to load member details", xhr.responseText);
+            alert("Failed to load member details");
+        });
+}
+
+// ---------- Load Plans ----------
+function loadPlans(branchId) {
+    $("#renew_plan").html('<option value="">Loading...</option>');
+
+    $.get(`/branches/${branchId}/plans/`)
+        .done(function (plans) {
+            let options = '<option value="">Choose plan</option>';
+
+            $.each(plans, function (i, p) {
+                options += `
+        <option value="${p.id}"
+                data-price="${p.price}"
+                data-duration="${p.duration_days}">
+          ${p.name} (₹${p.price})
+        </option>`;
+            });
+
+            $("#renew_plan").html(options);
+        })
+        .fail(function (xhr) {
+            console.error("Failed to load plans", xhr.responseText);
+            $("#renew_plan").html('<option value="">No plans found</option>');
+        });
+}
+
+// ---------- Plan Change: Auto amount + Correct expiry preview ----------
+$(document).on("change", "#renew_plan", function () {
+    const $opt = $(this).find(":selected");
+    const price = $opt.data("price");
+    const duration = parseInt($opt.data("duration") || 0, 10);
+
+    $("#renew_amount").val(price || "");
+
+    if (!duration) {
+        $("#renew_new_expiry").text("-");
+        return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const currentExpiryStr = $("#renew_current_expiry").val();
+    const expiryDate = parseISODate(currentExpiryStr);
+
+    // ✅ Renewal start:
+    // if not expired -> start after current expiry
+    // if expired -> start today
+    let startDate = new Date(today);
+    if (expiryDate && expiryDate >= today) {
+        startDate = new Date(expiryDate);
+        startDate.setDate(startDate.getDate() + 1);
+    }
+
+    // ✅ End date = start + (duration - 1)
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + (duration - 1));
+
+    $("#renew_new_expiry").text(toISODate(endDate));
+});
+
+// ---------- Submit Renewal ----------
+$(document).on("submit", "#renewPlanForm", function (e) {
+    e.preventDefault();
+
+    const memberId = $("#renew_member_id").val();
+    const url = `/members/${memberId}/renew/`;
+
+    $.ajax({
+        url: url,
+        type: "POST",
+        data: $(this).serialize(),
+        dataType: "json",
+        success: function (res) {
+          if (res.success) {
+            // Set WhatsApp link
+            $("#sr_whatsapp_btn").attr("href", res.whatsapp_url);
+    
+            // Close renew modal (optional)
+            const renewModalEl = document.getElementById("renewPlanModal");
+            if (renewModalEl) {
+              const renewModal = bootstrap.Modal.getInstance(renewModalEl);
+              if (renewModal) renewModal.hide();
+            }
+            // Show receipt modal
+            const modal = new bootstrap.Modal(document.getElementById("sendReceiptModal"));
+            modal.show();
+          } else {
+            alert(res.message || "Renewal failed");
+          }}
+          ,
+        error: function (xhr) {
+            console.error("Renewal error:", xhr.responseText);
+            alert("Renewal failed (check console)");
+        }
+    });
+});
+
+$("#sr_whatsapp_btn").click(function(){
+  setTimeout(function () {
+    location.reload();
+  }, 700);
+})
+function setStatusBadge(label) {
+  const $el = $("#md_status");
+  $el.text(safeText(label));
+
+  // reset classes
+  $el.removeClass("bg-success bg-danger bg-warning text-dark");
+
+  const l = String(label || "").toLowerCase();
+  if (l.includes("active")) $el.addClass("bg-success");
+  else if (l.includes("expired")) $el.addClass("bg-danger");
+  else if (l.includes("expir")) $el.addClass("bg-warning text-dark");
+  else $el.addClass("bg-secondary");
+}
+
+function openMemberDetails(memberId) {
+  $.ajax({
+    url: `/members/${memberId}/full-details/`,
+    type: "GET",
+    dataType: "json",
+    success: function (data) {
+      // Member
+      $("#md_name").text(safeText(data.member.name));
+      $("#md_phone").text(safeText(data.member.phone));
+      setStatusBadge(data.member.status_label);
+      $("#md_join_date").text(safeText(data.member.join_date));
+
+      $("#md_gym").text(safeText(data.member.gym_name));
+      $("#md_branch").text(safeText(data.member.branch_name));
+
+      $("#md_plan").text(
+        data.member.plan_name
+          ? `${data.member.plan_name} (₹${safeText(data.member.plan_price)})`
+          : "-"
+      );
+
+      $("#md_validity").text(
+        `${safeText(data.member.start_date)} → ${safeText(data.member.expiry_date)}`
+      );
+
+      // Summary
+      $("#md_total_paid").text(safeText(data.summary.total_paid));
+      $("#md_total_discount").text(safeText(data.summary.total_discount));     // ✅ NEW
+      $("#md_total_final").text(safeText(data.summary.total_final_amount));    // ✅ NEW
+      $("#md_last_payment").text(safeText(data.summary.last_payment_date));
+
+      // Payments table
+      const $tbody = $("#md_payments_tbody");
+      $tbody.empty();
+
+      if (!data.payments || data.payments.length === 0) {
+        $tbody.html(`<tr><td colspan="13" class="text-center text-muted">No payments</td></tr>`);
+      } else {
+        $.each(data.payments, function (idx, p) {
+          const givenBy = p.created_by_name
+            ? `${p.created_by_name}${p.created_by_role ? ` (${p.created_by_role})` : ""}`
+            : "-";
+
+          $tbody.append(`
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${safeText(p.invoice_no)}</td>
+              <td>${safeText(p.payment_date)}</td>
+              <td>${safeText(p.plan_name)}</td>
+              <td>₹${safeText(p.plan_price)}</td>
+              <td class="text-danger fw-semibold">₹${safeText(p.discount_amount)}</td>
+              <td class="fw-semibold">₹${safeText(p.final_amount)}</td>
+              <td class="text-success fw-semibold">₹${safeText(p.amount)}</td>
+              <td>${safeText(p.payment_mode_label)}</td>
+              <td>${safeText(p.discount_reason)}</td>
+              <td>${givenBy}</td>
+              <td>${safeText(p.coverage_start)}</td>
+              <td>${safeText(p.coverage_end)}</td>
+            </tr>
+          `);
+        });
+      }
+
+      // Show modal (Bootstrap 5)
+      const modalEl = document.getElementById("memberDetailsModal");
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    },
+    error: function (xhr, status, err) {
+      console.error("Error loading member details:", err);
+      alert(xhr.responseJSON?.error || "Failed to load member details");
+    }
+  });
+}
+
+// Save to excel
+$(document).ready(function () {
+
+  // ✅ SET THESE IDs IN YOUR HTML
+  // Search input:  id="searchInput"
+  // Branch select: id="branchFilter"
+  // Status select: id="statusFilter"
+  // Export button: id="exportCsv"
+  // Table:         id="renewalsTable"
+
+  // -------------------------------
+  // 1) Auto-fill Branch filter (col index 3)
+  // -------------------------------
+  let branches = new Set();
+
+  $("#renewalsTable tbody tr").each(function () {
+    const branch = $(this).find("td:eq(3)").text().trim();
+    if (branch) branches.add(branch);
+  });
+
+  Array.from(branches).sort().forEach(function (b) {
+    $("#branchFilter").append(`<option value="${b}">${b}</option>`);
+  });
+
+  // -------------------------------
+  // 2) Filter function
+  //    Name col 1, Phone col 2, Branch col 3, Status col 7
+  // -------------------------------
+  function filterTable() {
+    const search = ($("#searchInput").val() || "").toLowerCase().trim();
+    const branch = $("#branchFilter").val() || "";
+    const status = $("#statusFilter").val() || "";
+
+    $("#renewalsTable tbody tr").each(function () {
+      const name = $(this).find("td:eq(1)").text().toLowerCase();
+      const phone = $(this).find("td:eq(2)").text().toLowerCase();
+      const rowBranch = $(this).find("td:eq(3)").text().trim();
+
+      // Status badge text in col 7 (e.g., "Active", "Expired", "Expiring Soon")
+      const rowStatus = $(this).find("td:eq(7)").text().trim();
+
+      const matchSearch = !search || name.includes(search) || phone.includes(search);
+      const matchBranch = !branch || rowBranch === branch;
+
+      // If your dropdown values are: active/expiring/expired
+      // convert badge text -> key
+      let statusKey = "";
+      if (rowStatus.toLowerCase().includes("expired")) statusKey = "expired";
+      else if (rowStatus.toLowerCase().includes("expiring")) statusKey = "expiring";
+      else if (rowStatus.toLowerCase().includes("active")) statusKey = "active";
+
+      const matchStatus = !status || statusKey === status;
+
+      $(this).toggle(matchSearch && matchBranch && matchStatus);
+    });
+  }
+
+  $("#searchInput").on("keyup", filterTable);
+  $("#branchFilter, #statusFilter").on("change", filterTable);
+
+  // -------------------------------
+  // 3) Export visible rows to CSV
+  //    Exclude "Action" column (last col = 8)
+  // -------------------------------
+  $("#exportCsv").on("click", function () {
+    exportTableToCSV("renewals.csv");
+  });
+
+  function exportTableToCSV(filename) {
+    let rows = [];
+
+    // Header (exclude last "Action" column)
+    let headers = [];
+    $("#renewalsTable thead th").each(function (idx) {
+      if (idx === 8) return; // skip Action
+      headers.push($(this).text().trim());
+    });
+    rows.push(headers);
+
+    // Visible rows only
+    $("#renewalsTable tbody tr:visible").each(function () {
+      let row = [];
+      $(this).find("td").each(function (idx) {
+        if (idx === 8) return; // skip Action buttons column
+        row.push($(this).text().trim());
+      });
+      rows.push(row);
+    });
+
+    const csvContent = rows.map(r => r.map(csvEscape).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+  }
+
+  function csvEscape(value) {
+    if (value == null) return "";
+    value = String(value).replace(/\r?\n|\r/g, " "); // remove new lines
+    if (value.includes('"')) value = value.replace(/"/g, '""');
+    if (value.includes(",") || value.includes('"')) value = `"${value}"`;
+    return value;
+  }
+
+});
+
+
+
+</script>
+
+{% endblock %}

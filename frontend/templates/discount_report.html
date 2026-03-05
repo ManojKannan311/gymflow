@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container-fluid">
+
+  <!-- Header -->
+  <div class="row mb-3 mt-3">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center shadow-sm bg-white p-3 rounded-3">
+        <div>
+          <h5 class="fw-semibold mb-0">Discount Report</h5>
+          <p class="text-muted small mb-0">Track discounts, referrals, and who applied them.</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-primary btn-sm">
+          Back to Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-body">
+          <div class="text-muted small">Total Discount</div>
+          <div class="h4 fw-bold text-danger mb-0">₹ {{ summary.total_discount }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-body">
+          <div class="text-muted small">Total Collected (After Discount)</div>
+          <div class="h4 fw-bold mb-0">₹ {{ summary.total_collected }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-body">
+          <div class="text-muted small">Discount Entries</div>
+          <div class="h4 fw-bold mb-0">{{ summary.total_rows }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card shadow-sm border-0 rounded-3 mb-3">
+    <div class="card-body">
+      <form method="get">
+        <div class="row g-2">
+          <div class="col-12 col-md-3">
+            <input type="text" name="q" value="{{ filters.q }}" class="form-control"
+                   placeholder="Search name or phone">
+          </div>
+
+          <div class="col-12 col-md-2">
+            <select name="branch" class="form-select">
+              <option value="">All Branches</option>
+              {% for b in branches %}
+                <option value="{{ b.id }}" {% if filters.branch == b.id|stringformat:"s" %}selected{% endif %}>
+                  {{ b.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-12 col-md-2">
+            <select name="created_by" class="form-select">
+              <option value="">All Staff</option>
+              {% for u in staff %}
+                <option value="{{ u.id }}" {% if filters.created_by == u.id|stringformat:"s" %}selected{% endif %}>
+                  {{ u.first_name|default:u.username }} ({{ u.role }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-6 col-md-2">
+            <input type="date" name="start" value="{{ filters.start }}" class="form-control">
+          </div>
+
+          <div class="col-6 col-md-2">
+            <input type="date" name="end" value="{{ filters.end }}" class="form-control">
+          </div>
+
+          <div class="col-12 col-md-1 d-grid">
+            <button class="btn btn-primary">
+              <i class="bi bi-funnel"></i>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card shadow-sm border-0 rounded-3">
+    <div class="card-body table-responsive">
+
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:60px;">#</th>
+            <th>Member</th>
+            <th>Branch</th>
+            <th>Plan</th>
+            <th class="text-end">Plan Price</th>
+            <th class="text-end text-danger">Discount</th>
+            <th class="text-end">Final</th>
+            <th>Referral</th>
+            <th>Reason</th>
+            <th>Given By</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for p in rows %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+
+            <td>
+              <div class="fw-semibold">{{ p.member.name }}</div>
+              <div class="text-muted small">{{ p.member.phone }}</div>
+            </td>
+
+            <td>{{ p.member.branch.name }}</td>
+
+            <td>
+              {% if p.plan %}
+                {{ p.plan.name }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+
+            <td class="text-end fw-semibold">₹{{ p.plan_price }}</td>
+            <td class="text-end fw-bold text-danger">₹{{ p.discount_amount }}</td>
+            <td class="text-end fw-semibold">₹{{ p.final_amount }}</td>
+
+            <td>{{ p.referral_name|default:"-" }}</td>
+            <td>{{ p.discount_reason|default:"-" }}</td>
+
+            <td>
+              {% if p.created_by %}
+                {{ p.created_by.first_name|default:p.created_by.username }}
+                <div class="text-muted small">{{ p.created_by.role }}</div>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+
+            <td>{{ p.payment_date|date:"Y-m-d" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="11" class="text-center text-muted py-4">
+              No discounts found for this filter.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

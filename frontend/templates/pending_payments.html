@@ -1,0 +1,728 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/modal_card.css' %}">
+
+<style>
+  /* Premium modal look */
+  .pm-modal .modal-content {
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, .18);
+  }
+
+  .pm-modal .modal-header {
+    border-bottom: 1px solid #eef1f5;
+    padding: 18px 22px;
+  }
+
+  .pm-modal .modal-title {
+    font-weight: 700;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pm-modal .modal-body {
+    padding: 18px 22px;
+  }
+
+  .pm-modal .modal-footer {
+    border-top: 1px solid #eef1f5;
+    padding: 14px 22px;
+  }
+
+  /* Member header */
+  .pm-member {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #eef1f5;
+    border-radius: 14px;
+    background: #fbfcff;
+  }
+
+  .pm-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f3f5;
+    border: 1px solid #e6e9ef;
+    font-weight: 700;
+  }
+
+  .pm-member .name {
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .pm-member .phone {
+    font-size: 13px;
+    color: #6c757d;
+  }
+
+  /* Pending card */
+  .pm-summary {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .pm-card {
+    flex: 1;
+    border: 1px solid #eef1f5;
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: #fff;
+  }
+
+  .pm-card .label {
+    font-size: 12px;
+    color: #6c757d;
+  }
+
+  .pm-card .value {
+    font-weight: 700;
+    margin-top: 4px;
+  }
+
+  .pm-pending {
+    border: 1px solid rgba(220, 53, 69, .15);
+    background: rgba(220, 53, 69, .06);
+  }
+
+  .pm-pending .value {
+    color: #dc3545;
+    font-size: 20px;
+    letter-spacing: .2px;
+  }
+
+  /* Inputs */
+  .pm-modal .form-label {
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .pm-modal .form-control,
+  .pm-modal .form-select {
+    border-radius: 12px;
+    padding: 10px 12px;
+    border-color: #e6e9ef;
+  }
+
+  .pm-modal .form-control:focus,
+  .pm-modal .form-select:focus {
+    box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .12);
+  }
+
+  /* Error */
+  .pm-error {
+    background: rgba(220, 53, 69, .06);
+    border: 1px solid rgba(220, 53, 69, .15);
+    color: #dc3545;
+    border-radius: 12px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  /* Button */
+  .pm-modal #pm_save_btn {
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-weight: 700;
+  }
+</style>
+
+
+<div class="container-fluid">
+
+  <!-- Header Section -->
+  <div class="row mb-4 mt-3 ">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center shadow-sm bg-white py-2 px-3 rounded-3">
+        <div>
+          <h5 class="fw-semibold mb-0">
+            Pending Payments
+          </h5>
+          <p class="text-muted small mb-0">
+            (Members with outstanding balance)
+          </p>
+        </div>
+        <div class="bg-white  rounded-3 d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <div class="text-muted small">Total Pending Amount</div>
+            <div class="h4 fw-bold text-danger mb-0">₹ <span id="totalPendingTop">0.00</span></div>
+            <small></small>
+          </div>
+        </div>
+
+       
+      </div>
+    </div>
+  </div>
+  <div class="card shadow-sm border-0 mb-3 ">
+    <div class="card-body">
+      <div class="row g-2">
+
+        <div class="col-12 col-md-4">
+          <input type="text" id="searchInput" class="form-control" placeholder="Search name or phone">
+        </div>
+
+        <div class="col-12 col-md-4">
+          <select id="branchFilter" class="form-select">
+            <option value="">All Branches</option>
+          </select>
+        </div>
+
+        <!-- <div class="col-12 col-md-4">
+          <select id="statusFilter" class="form-select">
+            <option value="">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Expiring">Expiring</option>
+            <option value="Expired">Expired</option>
+          </select>
+        </div> -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Section -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-body table-responsive">
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-3" id="pendingTable">
+              <thead class="table">
+                <tr>
+                  <th class="px-3">#</th>
+                  <th>Member</th>
+                  <th>Branch</th>
+                  <th>Plan</th>
+                  <th>Plan Amount</th>
+                  <th>Paid</th>
+                  <th>Pending</th>
+                  <th class="text-center">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {% for r in pending_list %}
+                <tr>
+                  <td class="px-3">{{ forloop.counter }}</td>
+
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      {% if r.photo %}
+                      <img src="{{ r.photo }}" width="42" height="42" class="rounded-circle border"
+                        style="object-fit:cover;">
+                      {% else %}
+                      <div class="rounded-circle border d-flex align-items-center justify-content-center"
+                        style="width:42px;height:42px;background:#f1f3f5;font-weight:600;">
+                        {{ r.name|slice:":1"|upper }}
+                      </div>
+                      {% endif %}
+
+                      <div>
+                        <div class="fw-semibold">{{ r.name }}</div>
+                        <div class="text-muted small">{{ r.phone }}</div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td>{{ r.branch }}</td>
+                  <td>{{ r.plan }}</td>
+
+                  <td class="fw-semibold">₹{{ r.plan_price }}</td>
+                  <td class="text-success fw-semibold">₹{{ r.paid }}</td>
+                  <td class="text-danger fw-bold">₹{{ r.balance }}</td>
+
+                  <td class="text-center gap-2 ">
+
+                    <button class="btn btn-sm btn-outline-primary mb-2 mb-md-0"
+                            onclick="openMemberDetails('{{ r.member_id }}')">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  
+                    <a class="btn btn-success btn-sm mb-2 mb-md-0"
+                       target="_blank"
+                       href="https://wa.me/91{{ r.phone }}?text=Hello%20{{ r.name }}%20👋%0A%0AThis%20is%20a%20reminder%20that%20₹{{ r.balance }}%20is%20pending%20for%20your%20membership%20plan.%0AKindly%20make%20the%20payment%20at%20the%20earliest.%20Thank%20you%20💪">
+                      <i class="bi bi-whatsapp"></i>
+                    </a>
+                  
+                    <a class="btn btn-primary btn-sm mb-2 mb-md-0"
+                       target="_blank"
+                       href="tel:+91{{ r.phone }}">
+                      <i class="bi bi-telephone-fill"></i>
+                    </a>
+                  
+                    <button type="button"
+                            class="btn btn-sm btn-success mb-2 mb-md-0 collect-btn"
+                            data-member-id="{{ r.member_id }}">
+                      <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                  
+                  </td>
+
+                </tr>
+
+                {% empty %}
+                <tr>
+                  <td colspan="8" class="text-center py-5 text-muted">
+                    <i class="bi bi-check-circle fs-4"></i>
+                    <div>No pending payments 🎉</div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal fade pm-modal" id="collectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content">
+
+      <!-- Header -->
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <span class="d-inline-flex align-items-center justify-content-center rounded-circle"
+            style="width:34px;height:34px;background:rgba(13,110,253,.10);">
+            <i class="bi bi-cash-coin text-primary"></i>
+          </span>
+          Collect Pending Payment
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <input type="hidden" id="pm_member_id">
+
+        <!-- Member info (premium card) -->
+        <div class="pm-member mb-3">
+          <div class="pm-avatar" id="pm_avatar">M</div>
+          <div>
+            <div class="name" id="pm_member_name">-</div>
+            <div class="phone" id="pm_member_phone">-</div>
+          </div>
+        </div>
+
+        <!-- Plan + dates + pending -->
+        <div class="pm-card mb-3">
+          <div class="label">Plan</div>
+          <div class="value" id="pm_plan_name">-</div>
+
+          <div class="row g-2 mt-2">
+            <div class="col-6">
+              <div class="label">Start</div>
+              <div class="value" id="pm_start_date">-</div>
+            </div>
+            <div class="col-6">
+              <div class="label">Expiry</div>
+              <div class="value" id="pm_expiry_date">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pm-card pm-pending mb-3">
+          <div class="label">Pending Amount</div>
+          <div class="value">₹<span id="pm_balance">0.00</span></div>
+        </div>
+
+        <!-- Error -->
+        <div class="pm-error mb-3 d-none" id="pm_error"></div>
+
+        <!-- Inputs -->
+        <div class="row g-2">
+          <div class="col-12 col-md-6">
+            <label class="form-label">Amount</label>
+            <input type="number" class="form-control" id="pm_amount" min="1" step="0.01" placeholder="Enter amount">
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label">Payment Mode</label>
+            <select class="form-select" id="pm_mode">
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="text-muted small mt-2">
+          Tip: enter only the balance amount to close pending.
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="pm_save_btn">
+          <i class="bi bi-check2-circle me-1"></i> Save Payment
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Member Details Modal -->
+<div class="modal fade" id="memberDetailsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+          <div class="modal-header">
+              <h5 class="modal-title">Member Details</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body">
+              <!-- Member Summary -->
+              <div class="row g-3 shadow-sm">
+                  <div class="col-md-6 ">
+                      <div class="border rounded p-3">
+                          <div><b>Name:</b> <span id="md_name">-</span></div>
+                          <div><b>Phone:</b> <span id="md_phone">-</span></div>
+                          <div><b>Status:</b> <span id="md_status" class="badge rounded-pill bg-success">-</span></div>
+                          <div><b>Join Date:</b> <span id="md_join_date">-</span></div>
+                      </div>
+                  </div>
+
+                  <div class="col-md-6 ">
+                      <div class="border rounded p-3">
+                          <div><b>Gym:</b> <span id="md_gym">-</span></div>
+                          <div><b>Branch:</b> <span id="md_branch">-</span></div>
+                          <div><b>Plan:</b> <span id="md_plan">-</span></div>
+                          <div><b>Plan Valid:</b> <span id="md_validity">-</span></div>
+                      </div>
+                  </div>
+              </div>
+
+              <hr>
+
+              <!-- Payment Summary -->
+              <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <h6 class="mb-0">Payment History</h6>
+                <div class="text-end">
+                  <span class="me-3"><b>Total Paid:</b> ₹<span id="md_total_paid">0</span></span>
+                  <span class="me-3"><b>Total Discount:</b> ₹<span id="md_total_discount">0</span></span>
+                  <span class="me-3"><b>Total Final:</b> ₹<span id="md_total_final">0</span></span>
+                  <span><b>Last Payment:</b> <span id="md_last_payment">-</span></span>
+                </div>
+              </div>
+
+              <!-- Payment Table -->
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                  <thead>
+                    <tr>
+                      <th style="width:50px;">#</th>
+                      <th>Invoice</th>
+                      <th>Payment Date</th>
+                      <th>Plan</th>
+                      <th>Plan Price</th>
+                      <th>Discount</th>
+                      <th>Final</th>
+                      <th>Paid</th>
+                      <th>Mode</th>
+                      <th>Reason</th>
+                      <th>Given By</th>
+                      <th>Coverage Start</th>
+                      <th>Coverage End</th>
+                    </tr>
+                  </thead>
+                  <tbody id="md_payments_tbody">
+                    <tr>
+                      <td colspan="13" class="text-center">No payments</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+          </div>
+
+          <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+
+      </div>
+  </div>
+</div>
+
+<script>
+  function safeText(v) {
+    return (v === null || v === undefined || v === "") ? "-" : v;
+  }
+
+  function parseMoney(val) {
+    if (!val) return 0;
+    return parseFloat(String(val).replace(/[₹,\s]/g, "")) || 0;
+  }
+
+  function initials(name) {
+    if (!name) return "M";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function setStatusPill($el, label) {
+    $el.text(label || "-");
+    $el.removeClass("bg-success bg-danger bg-warning text-dark text-white");
+
+    const l = String(label || "").toLowerCase();
+    if (l.includes("active")) $el.addClass("bg-success text-white");
+    else if (l.includes("expired")) $el.addClass("bg-danger text-white");
+    else if (l.includes("expir")) $el.addClass("bg-warning text-dark");
+    else $el.addClass("bg-light text-dark");
+  }
+
+  // ---------- member details ----------
+  function setStatusBadge(label) {
+    const $el = $("#md_status");
+    $el.text(safeText(label));
+  
+    // reset classes
+    $el.removeClass("bg-success bg-danger bg-warning text-dark");
+  
+    const l = String(label || "").toLowerCase();
+    if (l.includes("active")) $el.addClass("bg-success");
+    else if (l.includes("expired")) $el.addClass("bg-danger");
+    else if (l.includes("expir")) $el.addClass("bg-warning text-dark");
+    else $el.addClass("bg-secondary");
+  }
+  
+  function openMemberDetails(memberId) {
+    $.ajax({
+      url: `/members/${memberId}/full-details/`,
+      type: "GET",
+      dataType: "json",
+      success: function (data) {
+        // Member
+        $("#md_name").text(safeText(data.member.name));
+        $("#md_phone").text(safeText(data.member.phone));
+        setStatusBadge(data.member.status_label);
+        $("#md_join_date").text(safeText(data.member.join_date));
+  
+        $("#md_gym").text(safeText(data.member.gym_name));
+        $("#md_branch").text(safeText(data.member.branch_name));
+  
+        $("#md_plan").text(
+          data.member.plan_name
+            ? `${data.member.plan_name} (₹${safeText(data.member.plan_price)})`
+            : "-"
+        );
+  
+        $("#md_validity").text(
+          `${safeText(data.member.start_date)} → ${safeText(data.member.expiry_date)}`
+        );
+  
+        // Summary
+        $("#md_total_paid").text(safeText(data.summary.total_paid));
+        $("#md_total_discount").text(safeText(data.summary.total_discount));     // ✅ NEW
+        $("#md_total_final").text(safeText(data.summary.total_final_amount));    // ✅ NEW
+        $("#md_last_payment").text(safeText(data.summary.last_payment_date));
+  
+        // Payments table
+        const $tbody = $("#md_payments_tbody");
+        $tbody.empty();
+  
+        if (!data.payments || data.payments.length === 0) {
+          $tbody.html(`<tr><td colspan="13" class="text-center text-muted">No payments</td></tr>`);
+        } else {
+          $.each(data.payments, function (idx, p) {
+            const givenBy = p.created_by_name
+              ? `${p.created_by_name}${p.created_by_role ? ` (${p.created_by_role})` : ""}`
+              : "-";
+  
+            $tbody.append(`
+              <tr>
+                <td>${idx + 1}</td>
+                <td>${safeText(p.invoice_no)}</td>
+                <td>${safeText(p.payment_date)}</td>
+                <td>${safeText(p.plan_name)}</td>
+                <td>₹${safeText(p.plan_price)}</td>
+                <td class="text-danger fw-semibold">₹${safeText(p.discount_amount)}</td>
+                <td class="fw-semibold">₹${safeText(p.final_amount)}</td>
+                <td class="text-success fw-semibold">₹${safeText(p.amount)}</td>
+                <td>${safeText(p.payment_mode_label)}</td>
+                <td>${safeText(p.discount_reason)}</td>
+                <td>${givenBy}</td>
+                <td>${safeText(p.coverage_start)}</td>
+                <td>${safeText(p.coverage_end)}</td>
+              </tr>
+            `);
+          });
+        }
+  
+        // Show modal (Bootstrap 5)
+        const modalEl = document.getElementById("memberDetailsModal");
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      },
+      error: function (xhr, status, err) {
+        console.error("Error loading member details:", err);
+        alert(xhr.responseJSON?.error || "Failed to load member details");
+      }
+    });
+  }
+
+  // make it global for your onclick in HTML
+  window.openMemberDetails = openMemberDetails;
+
+  // ---------- pending payments page ----------
+  $(document).ready(function () {
+    const $table = $("#pendingTable");
+
+    // column indexes
+    const COL_MEMBER = 1;
+    const COL_BRANCH = 2;
+    const COL_PENDING = 6;
+
+    // build branch dropdown once
+    const branches = new Set();
+    $table.find("tbody tr").each(function () {
+      const b = $(this).find(`td:eq(${COL_BRANCH})`).text().trim();
+      if (b) branches.add(b);
+    });
+
+    Array.from(branches).sort().forEach(b => {
+      $("#branchFilter").append(`<option value="${b}">${b}</option>`);
+    });
+
+    // totals from visible rows
+    function updateTopPending() {
+      let total = 0;
+      let count = 0;
+
+      $table.find("tbody tr:visible").each(function () {
+        const pendingText = $(this).find(`td:eq(${COL_PENDING})`).text().trim();
+        const pending = parseMoney(pendingText);
+
+        if (pending > 0) {
+          total += pending;
+          count += 1;
+        }
+      });
+
+      $("#totalPendingTop").text(total.toFixed(2));
+      $("#pendingMembersTop").text(count);
+    }
+
+    function filterTable() {
+      const search = ($("#searchInput").val() || "").toLowerCase().trim();
+      const branchVal = $("#branchFilter").val() || "";
+
+      $table.find("tbody tr").each(function () {
+        // skip empty row (No pending payments 🎉)
+        const cols = $(this).find("td").length;
+        if (cols < 8) return;
+
+        const memberText = $(this).find(`td:eq(${COL_MEMBER})`).text().toLowerCase();
+        const rowBranch = $(this).find(`td:eq(${COL_BRANCH})`).text().trim();
+
+        const matchSearch = !search || memberText.includes(search);
+        const matchBranch = !branchVal || rowBranch === branchVal;
+
+        $(this).toggle(matchSearch && matchBranch);
+      });
+
+      updateTopPending();
+    }
+
+    $("#searchInput").on("keyup", filterTable);
+    $("#branchFilter").on("change", filterTable);
+
+    // initial
+    updateTopPending();
+
+    // ---------- collect modal ----------
+    const modalEl = document.getElementById("collectModal");
+    const bsModal = new bootstrap.Modal(modalEl);
+
+    function showError(msg) {
+      $("#pm_error").text(msg).removeClass("d-none");
+    }
+    function clearError() {
+      $("#pm_error").addClass("d-none").text("");
+    }
+
+    $(document).on("click", ".collect-btn", function () {
+      const memberId = $(this).data("member-id");
+      clearError();
+
+      $.get(`/pending-payment/${memberId}/data/`, function (res) {
+        if (!res.success) {
+          alert(res.error || "Failed to load data");
+          return;
+        }
+
+        $("#pm_member_id").val(res.member.id);
+        $("#pm_member_name").text(res.member.name);
+        $("#pm_member_phone").text(res.member.phone);
+        $("#pm_avatar").text(initials(res.member.name));
+
+        $("#pm_plan_name").text(`${res.plan.name} (₹${res.plan.price})`);
+        $("#pm_start_date").text(res.plan.start_date || "-");
+        $("#pm_expiry_date").text(res.plan.expiry_date || "-");
+
+        $("#pm_balance").text(Number(res.payments.balance || 0).toFixed(2));
+        $("#pm_amount").val("").attr("max", res.payments.balance);
+
+        bsModal.show();
+      }).fail(function (xhr) {
+        alert(xhr.responseJSON?.error || "Error loading data");
+      });
+    });
+
+    $("#pm_save_btn").on("click", function () {
+      clearError();
+
+      const memberId = $("#pm_member_id").val();
+      const amount = $("#pm_amount").val();
+      const mode = $("#pm_mode").val();
+
+      if (!amount || Number(amount) <= 0) {
+        showError("Enter a valid amount.");
+        return;
+      }
+
+      $.ajax({
+        url: `/pending-payment/${memberId}/pay/`,
+        type: "POST",
+        data: {
+          amount: amount,
+          payment_mode: mode,
+          csrfmiddlewaretoken: $("input[name=csrfmiddlewaretoken]").val()
+        },
+        success: function (res) {
+          if (!res.success) {
+            showError(res.error || "Failed");
+            return;
+          }
+          location.reload();
+        },
+        error: function (xhr) {
+          showError(xhr.responseJSON?.error || "Payment failed");
+        }
+      });
+    });
+  });
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container-fluid mt-3">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h5 class="mb-0 fw-semibold">Invoices</h5>
+      <small class="text-muted">Search invoice no / name / phone, filter by date, export to Excel.</small>
+    </div>
+
+    <!-- ✅ Frontend Export Buttons -->
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-success" id="btnExportExcel">
+        <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+      </button>
+
+      <button type="button" class="btn btn-outline-success" id="btnExportCSV">
+        <i class="bi bi-file-earmark-arrow-down me-1"></i> Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="card shadow-sm border-0 mb-3">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+
+        <div class="col-12 col-md-4">
+          <label class="form-label small text-muted">Search (Name / Phone / Invoice No)</label>
+          <input type="text" name="q" class="form-control"
+                 value="{{ filters.q }}" placeholder="Search...">
+        </div>
+
+        <div class="col-12 col-md-2">
+          <label class="form-label small text-muted">Branch</label>
+          <select name="branch" class="form-select">
+            <option value="">All Branches</option>
+            {% for b in branches %}
+              <option value="{{ b.id }}" {% if filters.branch == b.id|stringformat:"s" %}selected{% endif %}>
+                {{ b.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-2">
+          <label class="form-label small text-muted">Staff</label>
+          <select name="created_by" class="form-select">
+            <option value="">All Staff</option>
+            {% for s in staff %}
+              <option value="{{ s.id }}" {% if filters.created_by == s.id|stringformat:"s" %}selected{% endif %}>
+                {{ s.first_name|default:s.username }} ({{ s.role }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-6 col-md-2">
+          <label class="form-label small text-muted">Start Date</label>
+          <input type="date" name="start" class="form-control" value="{{ filters.start }}">
+        </div>
+
+        <div class="col-6 col-md-2">
+          <label class="form-label small text-muted">End Date</label>
+          <input type="date" name="end" class="form-control" value="{{ filters.end }}">
+        </div>
+
+        <div class="col-12 d-flex gap-2 mt-2">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-funnel me-1"></i> Apply
+          </button>
+          <a class="btn btn-light border" href="{% url 'invoices_page' %}">
+            Reset
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </form>
+
+  <!-- Table -->
+  <div class="card shadow-sm border-0">
+    <div class="card-body table-responsive">
+      <!-- ✅ add id for export -->
+      <table class="table table-hover align-middle" id="invoiceTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Invoice No</th>
+            <th>Date</th>
+            <th>Member</th>
+            <th>Branch</th>
+            <th>Plan</th>
+            <th>Plan Price</th>
+            <th>Discount</th>
+            <th>Final</th>
+            <th>Paid</th>
+            <th>Mode</th>
+            <th>Given By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-semibold">{{ r.invoice_no }}</td>
+            <td>{{ r.payment_date|date:"Y-m-d" }}</td>
+
+            <td>
+              <div class="fw-semibold">{{ r.member.name }}</div>
+              <div class="text-muted small">{{ r.member.phone }}</div>
+            </td>
+
+            <td>{{ r.member.branch.name }}</td>
+            <td>{{ r.plan.name }}</td>
+
+            <td>₹{{ r.plan_price }}</td>
+            <td class="text-danger fw-semibold">₹{{ r.discount_amount }}</td>
+            <td class="fw-semibold">₹{{ r.final_amount }}</td>
+            <td class="text-success fw-semibold">₹{{ r.amount }}</td>
+
+            <td>{{ r.get_payment_mode_display }}</td>
+
+            <td>
+              {% if r.created_by %}
+                {{ r.created_by.first_name|default:r.created_by.username }} ({{ r.created_by.role }})
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="12" class="text-center text-muted py-4">
+              No invoices found
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ✅ SheetJS library (required for Excel export) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+  function nowDateStr() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function exportTableToExcel(tableId, filename) {
+    const table = document.getElementById(tableId);
+    if (!table) {
+      alert("Table not found!");
+      return;
+    }
+
+    // clone and export (visible rows only)
+    const clone = table.cloneNode(true);
+
+    // remove hidden rows (if you later add client-side filtering)
+    clone.querySelectorAll("tbody tr").forEach(tr => {
+      if (window.getComputedStyle(tr).display === "none") tr.remove();
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.table_to_sheet(clone, { raw: true });
+
+    XLSX.utils.book_append_sheet(wb, ws, "Invoices");
+    XLSX.writeFile(wb, filename);
+  }
+
+  function exportTableToCSV(tableId, filename) {
+    const table = document.getElementById(tableId);
+    if (!table) {
+      alert("Table not found!");
+      return;
+    }
+
+    const rows = table.querySelectorAll("tr");
+    const csv = [];
+
+    rows.forEach((row) => {
+      if (window.getComputedStyle(row).display === "none") return;
+
+      const cols = row.querySelectorAll("th, td");
+      const rowData = [];
+      cols.forEach((col) => {
+        let text = col.innerText.replace(/\n/g, " ").trim();
+        text = text.replace(/"/g, '""');
+        rowData.push(`"${text}"`);
+      });
+      csv.push(rowData.join(","));
+    });
+
+    const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  }
+
+  document.getElementById("btnExportExcel").addEventListener("click", function () {
+    exportTableToExcel("invoiceTable", `invoices_${nowDateStr()}.xlsx`);
+  });
+
+  document.getElementById("btnExportCSV").addEventListener("click", function () {
+    exportTableToCSV("invoiceTable", `invoices_${nowDateStr()}.csv`);
+  });
+</script>
+
+{% endblock %}

@@ -1,0 +1,498 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .form-control:focus,
+    .form-select:focus {
+        box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, .15);
+        border-color: #86b7fe;
+    }
+</style>
+<div class="container-fluid mt-4">
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm"
+        role="alert">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    <div class="d-flex justify-content-between align-items-center mb-4 shadow-sm"
+        style="background-color: white;padding:20px;border-radius: 10px;">
+        <h5 class="fw-semibold mb-0">Client Registration <span>
+                <p class="text-muted small mb-0" style="font-size: 14px;">(Register a customer and assign membership)
+                </p>
+            </span></h5>
+
+        <a href="/members/" class="btn btn-outline-primary btn-sm">
+            View Members
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-12 col-md-10">
+
+            <div class="card shadow-sm border-0 rounded-3 pt-3 pb-3">
+                <div class="card-body">
+                    <!-- ✅ Added enctype for file upload -->
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <!-- ================= MEMBER PHOTO ================= -->
+
+
+
+
+                        <h6 class="text-uppercase fw-bold text-secondary mb-3 mt-2">Member Photo</h6>
+
+                        <div class="row align-items-start">
+                            <!-- ✅ Left aligned like other inputs -->
+                            <div class="col-md-6 mb-4">
+
+                                <div class="d-flex align-items-center gap-3">
+                                    <!-- Photo Wrapper -->
+                                    <div style="position: relative; width:150px; height:150px;">
+                                        <!-- Preview Image -->
+                                        <img id="photo_preview" src="https://via.placeholder.com/150"
+                                            class="rounded-circle border shadow-sm" width="150" height="150"
+                                            style="object-fit: cover; cursor: pointer;" onclick="startCamera()">
+
+                                        <!-- Camera Overlay Button -->
+                                        <button type="button" onclick="startCamera()" class="btn btn-primary btn-sm"
+                                            style="
+                                                    position:absolute;
+                                                    bottom:8px;
+                                                    right:8px;
+                                                    width:40px;
+                                                    height:40px;
+                                                    border-radius:50%;
+                                                    padding:0;
+                                                    display:flex;
+                                                    align-items:center;
+                                                    justify-content:center;
+                                                    box-shadow:0 2px 6px rgba(0,0,0,0.3);
+                                                ">
+                                            <i class="bi bi-camera text-white"></i>
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="captured_photo" id="captured_photo">
+                                    <!-- Small helper text -->
+                                    <div class="text-muted small">
+                                        Tap the photo to open camera.<br>
+
+                                    </div>
+                                </div>
+
+                                <!-- Camera Section -->
+                                <div id="camera_container" style="display:none;" class="mt-3">
+                                    <video id="video" autoplay playsinline width="300" height="300"
+                                        style="border-radius:10px; border:1px solid #ccc;"></video>
+
+                                    <div class="mt-2 d-flex gap-2">
+                                        <button type="button" class="btn btn-success btn-sm"
+                                            onclick="capturePhoto()">Capture</button>
+                                        <button type="button" class="btn btn-danger btn-sm"
+                                            onclick="stopCamera()">Close</button>
+                                    </div>
+
+                                    <canvas id="canvas" style="display:none;"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- ✅ Keep grid balance like other rows (optional) -->
+                            <div class="col-md-6 mb-4"></div>
+                        </div>
+                        <hr class="my-2">
+
+                        <!-- ================= MEMBER INFO ================= -->
+                        <h6 class="text-uppercase fw-bold text-secondary mb-3">Member Info</h6>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Branch <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" name="branch" id="branch_id" required>
+                                    <option value="">Select Branch</option>
+                                    {% for branch in branches %}
+                                    <option value="{{ branch.id }}">{{ branch.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" name="name" class="form-control" placeholder="Full name" required>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Mobile Number <span class="text-danger">*</span>
+                                </label>
+                                <input type="tel" name="phone" class="form-control" placeholder="10 digit number"
+                                    required maxlength="10">
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Join date <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" name="join_date" id="Join_date" required>
+                            </div>
+                        </div>
+
+
+
+                        <hr class="my-2">
+
+                        <!-- ================= MEMBERSHIP INFO ================= -->
+                        <!-- ================= MEMBERSHIP INFO ================= -->
+                        <!-- ================= MEMBERSHIP INFO ================= -->
+                        <h6 class="text-uppercase fw-bold text-secondary mb-3 mt-2">Membership Info</h6>
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Start date <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" name="Start_date" id="Start_date" required>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Expiry date <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" name="expiry_date" id="expiry_date" readonly>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Membership Plan <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" name="plan" id="plan_id" required></select>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Plan Amount (₹) <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" name="amount" class="form-control bg-light" id="price" readonly>
+                            </div>
+
+                            <!-- ✅ Discount -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Discount Amount (₹)
+                                </label>
+                                <input type="number" name="discount_amount" class="form-control" id="discount_amount"
+                                    min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Discount Reason
+                                </label>
+                                <input type="text" name="discount_reason" class="form-control" id="discount_reason"
+                                    placeholder="Festival offer / Student / etc">
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Referral Name
+                                </label>
+                                <input type="text" name="referral_name" class="form-control" id="referral_name"
+                                    placeholder="Who referred this member?">
+                            </div>
+
+                            <!-- ✅ Paid Now (membership fee) -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Paid Now (₹)
+                                </label>
+                                <input type="number" name="paid_amount" class="form-control" id="paid_amount" min="0"
+                                    step="0.01" placeholder="Leave empty for full payment">
+                                <!-- <small class="text-muted">If empty, system will take full final amount.</small> -->
+                            </div>
+
+                            <!-- ✅ Pending (readonly) -->
+                            <!-- <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Pending (₹)
+                                </label>
+                                <input type="number" class="form-control bg-light" id="pending_amount" readonly
+                                    value="0.00">
+                                <small class="text-muted">Final Amount - Paid Now</small>
+                            </div> -->
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Payment method <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" name="Payment_method" id="Payment_method" required>
+                                    <option value="" selected disabled>Select Method</option>
+                                    <option value="upi">UPI</option>
+                                    <option value="cash">Cash</option>
+                                </select>
+                            </div>
+
+                            <!-- ✅ Security Deposit -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label small fw-semibold text-muted">
+                                    Security Deposit (₹)
+                                </label>
+                                <input type="number" name="security_deposit" class="form-control" min="0" step="0.01"
+                                    placeholder="Optional">
+                                <small class="text-muted">Separate from membership fee (non-refundable).</small>
+                            </div>
+
+                        </div>
+
+                        <!-- ================= ACTIONS ================= -->
+                        <div class="row mt-2">
+                            <div class="col-12 d-flex justify-content-end gap-2">
+                                <button class="btn btn-primary px-4 shadow-sm">
+                                    <i class="bi bi-check-circle me-1"></i>
+                                    Save Member
+                                </button>
+                                <button type="reset" class="btn btn-light border" onclick="removePhoto();">
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    function num(id) {
+        const v = parseFloat(document.getElementById(id)?.value || 0);
+        return isNaN(v) ? 0 : v;
+      }
+    
+      function calcAmounts() {
+        const price = num("price");
+        const discount = num("discount_amount");
+        const finalAmt = Math.max(price - discount, 0);
+    
+        const paid = num("paid_amount");
+        const pending = Math.max(finalAmt - paid, 0);
+    
+        document.getElementById("final_amount").value = finalAmt.toFixed(2);
+        document.getElementById("pending_amount").value = pending.toFixed(2);
+      }
+    
+      document.addEventListener("DOMContentLoaded", function () {
+        ["discount_amount", "paid_amount"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener("input", calcAmounts);
+        });
+        calcAmounts();
+      });
+
+
+    $(function () {
+
+        const $video = $("#video");
+        const video = $video.get(0);
+
+        const $canvas = $("#canvas");
+        const canvas = $canvas.get(0);
+
+        const $preview = $("#photo_preview");
+        const $cameraContainer = $("#camera_container");
+        const $captured = $("#captured_photo");
+
+        let stream = null;
+
+        // 🔥 Open Camera
+        window.startCamera = async function () {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" } },
+                    audio: false
+                });
+
+                if (video) video.srcObject = stream;
+                $cameraContainer.show();
+
+            } catch (err) {
+                alert("Camera access denied or not supported.");
+                console.error(err);
+            }
+        };
+
+        // 📸 Capture Photo
+        window.capturePhoto = function () {
+            if (!video || !canvas) return;
+
+            const ctx = canvas.getContext("2d");
+
+            canvas.width = video.videoWidth || 300;
+            canvas.height = video.videoHeight || 300;
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = canvas.toDataURL("image/jpeg", 0.8);
+
+            // ✅ Set preview
+            if ($preview.length) $preview.attr("src", imageData);
+
+            // ✅ Save base64 to hidden input (send to Django)
+            if ($captured.length) $captured.val(imageData);
+
+            stopCamera();
+        };
+
+        // ❌ Stop Camera
+        window.stopCamera = function () {
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+            $cameraContainer.hide();
+        };
+
+    });
+    $(document).ready(function () {
+
+        // When branch changes → load plans
+        $("#branch_id").on("change", function () {
+            let branchId = $(this).val();
+
+            $("#plan_id").html('<option value="">Loading...</option>');
+            $("#price").val("");
+
+            if (!branchId) {
+                $("#plan_id").html('<option value="">Select Branch first</option>');
+                return;
+            }
+
+            $.ajax({
+                url: "/get_plan/",
+                data: {
+                    branch_id: branchId
+                },
+                success: function (plans) {
+
+                    if (plans.length === 0) {
+                        $("#plan_id").html('<option value="">No plans available</option>');
+                        return;
+                    }
+
+                    let options = '<option value="">Select Plan</option>';
+
+                    plans.forEach(function (plan) {
+                        options += `<option 
+                                        value="${plan.id}" 
+                                        data-price="${plan.price}"
+                                        data-duration="${plan.duration_days}">
+                                        ${plan.name} - ₹${plan.price}
+                                    </option>`;
+                    });
+
+                    $("#plan_id").html(options);
+                }
+            });
+
+            $("#branch_id").on("change", function () {
+                let branchId = $(this).val();
+
+                $("#plan_id").html('<option value="">Loading...</option>');
+                $("#price").val("");
+
+                if (!branchId) {
+                    $("#plan_id").html('<option value="">Select Branch first</option>');
+                    return;
+                }
+
+                $.ajax({
+                    url: "/get_plan/",
+                    data: {
+                        branch_id: branchId
+                    },
+                    success: function (plans) {
+
+                        if (plans.length === 0) {
+                            $("#plan_id").html('<option value="">No plans available</option>');
+                            return;
+                        }
+
+                        let options = '<option value="">Select Plan</option>';
+
+                        plans.forEach(function (plan) {
+                            options += `<option 
+                                        value="${plan.id}" 
+                                        data-price="${plan.price}"
+                                        data-duration="${plan.duration_days}">
+                                        ${plan.name} - ₹${plan.price}
+                                    </option>`;
+                        });
+
+                        $("#plan_id").html(options);
+                    }
+                });
+            });
+
+
+
+
+
+
+
+        });
+
+
+        // When plan changes → auto fill price
+        $("#plan_id").on("change", function () {
+            let price = $(this).find(":selected").data("price") || "";
+            $("#price").val(price);
+        });
+
+        $("#plan_id").on("change", function () {
+            let duration = $(this).find(":selected").data("duration");
+
+            let startDate = $("#Start_date").val();
+
+            if (!duration || !startDate) {
+                $("#expiry_date").val("");
+                return;
+            }
+
+            // convert to date
+            let start = new Date(startDate);
+
+            // add duration
+            start.setDate(start.getDate() + parseInt(duration));
+
+            // format yyyy-mm-dd
+            let yyyy = start.getFullYear();
+            let mm = String(start.getMonth() + 1).padStart(2, '0');
+            let dd = String(start.getDate()).padStart(2, '0');
+
+            $("#expiry_date").val(`${yyyy}-${mm}-${dd}`);
+        });
+
+    });
+    $(document).ready(function () {
+
+        setTimeout(function () {
+            $(".alert").slideUp("slow", function () {
+                $(this).alert('close');   // fully remove from DOM
+            });
+        }, 3000); // 5000ms = 5 sec
+
+    });
+
+
+</script>
+
+
+{% endblock %}
