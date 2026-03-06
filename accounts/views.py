@@ -9,11 +9,12 @@ def login_view(request):
         return redirect("dashboard")
 
     if request.method == "POST":
+        
         username = request.POST.get("username", "").strip()
         password = request.POST.get("password", "").strip()
 
         user = authenticate(request, username=username, password=password)
-
+        
         if user is None:
             messages.error(request, "Invalid username or password")
             return redirect("login")
@@ -35,7 +36,7 @@ def login_view(request):
             return redirect("member_list")      # or renewals_page / unpaid_members
         return redirect("dashboard")            # owner
 
-    return render(request, "accounts/login.html")
+    return render(request, "login.html")
 
 
 def logout_view(request):

@@ -1,18 +1,19 @@
 $(document).ready(function () {
+    console.log("dashboard.js loaded");
 
-    $("#toggleSidebar").click(function () {
+    $("#toggleSidebar").on("click", function () {
+        console.log("toggle clicked");
         $("#sidebar").toggleClass("show");
         $("#sidebarOverlay").fadeToggle(200);
     });
 
-    /* Overlay click closes sidebar */
-    $("#sidebarOverlay").click(function () {
+    $("#sidebarOverlay").on("click", function () {
         closeSidebar();
     });
 
-    /* DROPDOWN TOGGLE (IMPORTANT FIX) */
-    $(".menu-toggle").click(function (e) {
-        e.stopPropagation(); // ⛔ STOP sidebar close
+    $(".menu-toggle").on("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
 
         $(".submenu").not($(this).next()).slideUp(200);
         $(".menu-toggle").not($(this)).removeClass("active");
@@ -21,16 +22,14 @@ $(document).ready(function () {
         $(this).next(".submenu").slideToggle(200);
     });
 
-    /* Submenu item click → close sidebar (mobile only) */
-    $(".submenu a").click(function () {
-        if ($(window).width() < 769) {
+    $(".submenu a").on("click", function () {
+        if ($(window).width() < 992) {
             closeSidebar();
         }
     });
 
-    /* Normal menu click → close sidebar (mobile only) */
-    $(".sidebar > a:not(.menu-toggle)").click(function () {
-        if ($(window).width() < 769) {
+    $(".sidebar > a:not(.menu-toggle)").on("click", function () {
+        if ($(window).width() < 992) {
             closeSidebar();
         }
     });
@@ -40,13 +39,9 @@ $(document).ready(function () {
         $("#sidebarOverlay").fadeOut(200);
     }
 
-});
-$(document).ready(function () {
-
     setTimeout(function () {
         $(".alert").slideUp("slow", function () {
-            $(this).alert('close');   // fully remove from DOM
+            $(this).alert("close");
         });
-    }, 3000); // 5000ms = 5 sec
-
+    }, 3000);
 });
